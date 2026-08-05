@@ -1,10 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import {
-  CATEGORIES,
-  URGENCIES,
-  type ClassificationResult,
-  type ProviderAdapter,
-} from "./types";
+import { CATEGORIES, URGENCIES, type ClassificationResult, type ProviderAdapter } from "./types";
+import { classifyWithRetry } from "./validate";
 
 const MODEL = "gemini-flash-latest";
 
@@ -28,22 +24,6 @@ const CLASSIFY_SCHEMA = {
   ],
 };
 
-// Basic shape check. Full validation + retry-on-failure lands in Phase 5.
-function isClassificationResult(value: unknown): value is ClassificationResult {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.category === "string" &&
-    (CATEGORIES as readonly string[]).includes(v.category) &&
-    typeof v.urgency === "string" &&
-    (URGENCIES as readonly string[]).includes(v.urgency) &&
-    typeof v.needs_human === "boolean" &&
-    typeof v.needs_human_reason === "string" &&
-    typeof v.confidence === "number" &&
-    typeof v.draft_response === "string"
-  );
-}
-
 let client: GoogleGenAI | undefined;
 function getClient(): GoogleGenAI {
   if (!client) client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -51,31 +31,30 @@ function getClient(): GoogleGenAI {
 }
 
 async function classify(ticketText: string): Promise<ClassificationResult> {
-  const response = await getClient().models.generateContent({
-    model: MODEL,
-    contents: `Classify the following support ticket / GitHub issue:\n\n${ticketText}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: CLASSIFY_SCHEMA,
-    },
-  });
+  async function attempt(correction?: string): Promise<unknown> {
+    const prompt = correction
+      ? `Classify the following support ticket / GitHub issue:\n\n${ticketText}\n\n${correction}`
+      : `Classify the following support ticket / GitHub issue:\n\n${ticketText}`;
 
-  const text = response.text;
-  if (!text) {
-    throw new Error("Gemini response did not contain any text");
+    const response = await getClient().models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: CLASSIFY_SCHEMA,
+      },
+    });
+
+    const text = response.text;
+    if (!text) return undefined;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return undefined;
+    }
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("Gemini response was not valid JSON");
-  }
-
-  if (!isClassificationResult(parsed)) {
-    throw new Error("Gemini response failed schema validation");
-  }
-  return parsed;
+  return classifyWithRetry(attempt);
 }
 
 export const geminiAdapter: ProviderAdapter = { classify };

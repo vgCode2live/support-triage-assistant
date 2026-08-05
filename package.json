@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:anthropic": "tsx --env-file=.env scripts/test-anthropic.ts",
-    "test:gemini": "tsx --env-file=.env scripts/test-gemini.ts"
+    "test:gemini": "tsx --env-file=.env scripts/test-gemini.ts",
+    "test:retry": "tsx scripts/test-retry.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
