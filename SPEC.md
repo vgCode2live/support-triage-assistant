@@ -113,5 +113,5 @@ Rationale: keeps solo full-stack velocity high, plays to a stack I already know 
 1. Public Cloud Run URL, live and shareable
 2. Successfully classifies a real GitHub issue fetched live via the GitHub API (not just pasted text)
 3. Returns schema-valid JSON on both Anthropic and Gemini providers
-4. Tested manually against 10-15 varied real issues; failures/edge cases noted in README
+4. Tested manually against 10-15 varied real issues; results and failures/edge cases recorded in `docs/manual-test-results.md`
 5. `.env.example`, README (what it does, why, how to run), and Dockerfile all present
