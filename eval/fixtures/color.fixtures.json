@@ -1,0 +1,109 @@
+{
+  "repo": {
+    "owner": "fatih",
+    "name": "color",
+    "url": "https://github.com/fatih/color",
+    "commit_sha_or_ref": "820c6ebc21b06a3a5328297d556a87f91556e577",
+    "primary_language": "Go",
+    "approx_loc": 889,
+    "selection_rationale": "A small, widely-used terminal-color library, concentrated in one core file with a clear doc.go usage guide, and a public issue tracker with concrete bug reports whose fixes (or non-fixes) can be checked directly against the current source."
+  },
+  "fixtures": [
+    {
+      "id": "color-001",
+      "question": "What does `color.New(color.FgCyan, color.Bold).Println(\"hi\")` actually write to the terminal?",
+      "question_type": "code_behavior",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "color.go", "symbol": "New, wrap, format, unformat", "lines": "172-184, 469-496" }],
+      "reference_answer": "It writes the ANSI SGR escape sequence for cyan + bold (built from the params via format()), then 'hi\\n', then a matching reset escape sequence (via unformat()) - the colored text is wrapped between the two escape sequences.",
+      "rationale": "Read New() to see params are stored, and wrap()/format()/unformat() to see how the escape sequences are constructed around the printed text."
+    },
+    {
+      "id": "color-002",
+      "question": "When is the package-level `color.NoColor` variable set to true automatically, without any function call from the user?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "color.go", "symbol": "NoColor, noColorIsSet, stdoutIsTerminal", "lines": "16-22, 38-50" }],
+      "reference_answer": "At package initialization, NoColor is set true if the NO_COLOR environment variable is set to any non-empty value, or if TERM=dumb, or if stdout is not a terminal (including when os.Stdout is nil).",
+      "rationale": "Read the package-level var declaration and the two helper functions it calls at init time."
+    },
+    {
+      "id": "color-003",
+      "question": "If `DisableColor()` is called on one `*Color` instance, does that affect other `*Color` instances or the package-level `color.NoColor` setting?",
+      "question_type": "code_behavior",
+      "difficulty": "hard",
+      "expected_source": [{ "path": "color.go", "symbol": "DisableColor, EnableColor, isNoColorSet", "lines": "498-519" }],
+      "reference_answer": "No. DisableColor() only sets that specific instance's own noColor field. isNoColorSet() checks the instance's own field first and only falls back to the global NoColor variable when the instance's field is nil, so other instances and the global setting are unaffected.",
+      "rationale": "Read isNoColorSet()'s precedence logic (instance field checked before the global) alongside DisableColor()/EnableColor()."
+    },
+    {
+      "id": "color-004",
+      "question": "Can color output be disabled entirely, for example to support a --no-color CLI flag, without rewriting every existing color.Red(...) call?",
+      "question_type": "existing_feature_check",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "color.go", "symbol": "DisableColor, EnableColor", "lines": "498-509" }],
+      "reference_answer": "Yes. DisableColor()/EnableColor() exist specifically so existing calling code doesn't need to change, per their doc comments.",
+      "rationale": "Read the doc comments directly above DisableColor(), which state this exact purpose."
+    },
+    {
+      "id": "color-005",
+      "question": "Does this library support 24-bit RGB colors, or only the 16 standard ANSI colors?",
+      "question_type": "existing_feature_check",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "color.go", "symbol": "RGB, BgRGB, AddRGB, AddBgRGB", "lines": "186-208" }],
+      "reference_answer": "It supports 24-bit RGB. RGB(r,g,b) and BgRGB(r,g,b) create true-color foreground/background Color objects, and AddRGB/AddBgRGB let you chain additional RGB values onto an existing Color.",
+      "rationale": "Read the RGB/BgRGB/AddRGB/AddBgRGB functions and their doc comments."
+    },
+    {
+      "id": "color-006",
+      "question": "Can a user disable all color output globally via a standard environment variable, without touching their program's code at all?",
+      "question_type": "config_or_setup",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "color.go", "symbol": "noColorIsSet", "lines": "22, 38-41" }],
+      "reference_answer": "Yes - setting the NO_COLOR environment variable to any non-empty value disables color globally. This is checked once via noColorIsSet() when the NoColor package variable is initialized.",
+      "rationale": "Read noColorIsSet() and where it's used to initialize the package-level NoColor variable."
+    },
+    {
+      "id": "color-007",
+      "question": "GitHub issue fatih/color#250 reports a panic ('nil passed instead of *os.File to NewColorable()') when the program runs as a Windows service, because os.Stdout is nil in that context. Does the current code still have this problem?",
+      "question_type": "bug_status",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "color.go", "symbol": "stdoutIsTerminal, stdOut, stdErr", "lines": "43-68" }],
+      "reference_answer": "No, this appears fixed. stdoutIsTerminal(), stdOut(), and stdErr() all explicitly check `if os.Stdout == nil` (or os.Stderr) first and short-circuit - returning false or io.Discard - instead of passing a nil *os.File into colorable.NewColorableStdout()/NewColorableStderr(), which is what caused the original panic.",
+      "rationale": "Read the nil checks in stdoutIsTerminal/stdOut/stdErr, whose doc comments explicitly reference 'when running as a Windows service', matching the issue's scenario."
+    },
+    {
+      "id": "color-008",
+      "question": "GitHub issue fatih/color#31 says the package isn't safe to use from multiple goroutines concurrently because it's built on `fmt`. The code now has a `colorsCacheMu sync.Mutex`. Does that mutex fully resolve the concurrency concern from issue #31?",
+      "question_type": "bug_status",
+      "difficulty": "hard",
+      "expected_source": [
+        { "path": "color.go", "symbol": "colorsCacheMu, getCachedColor", "lines": "32-36, 553-564" },
+        { "path": "color.go", "symbol": "Set, Print", "lines": "228-236, 310-315" }
+      ],
+      "reference_answer": "Only partially. colorsCacheMu guards concurrent access to the colorsCache map inside getCachedColor, used by the package-level helpers like color.Red(...). It does not synchronize the Set()/unset()/Print() sequence itself - if two goroutines call Print()/Printf() concurrently and write to the same Output writer, their escape-sequence and content writes can still interleave, since those methods acquire no lock.",
+      "rationale": "Read where colorsCacheMu is actually locked (only around the cache map) versus the Set/Print methods that write to Output, which take no lock at all."
+    },
+    {
+      "id": "color-009",
+      "question": "What's the difference between `color.Red(...)` and `color.RedString(...)`?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "color.go", "symbol": "colorPrint, colorString, Red, RedString", "lines": "566-588, 596, 628" }],
+      "reference_answer": "color.Red(...) (via colorPrint) writes the colorized text directly to the package's Output writer and appends a newline if the format string doesn't already end with one. color.RedString(...) (via colorString) returns the colorized text as a string instead of printing it, with no newline added.",
+      "rationale": "Read colorPrint and colorString, and compare how Red and RedString each call into them."
+    },
+    {
+      "id": "color-010",
+      "question": "Is there a way to create a reusable, pre-styled print function instead of calling color.New(...).Println(...) every time text needs to be printed?",
+      "question_type": "existing_feature_check",
+      "difficulty": "easy",
+      "expected_source": [
+        { "path": "color.go", "symbol": "PrintFunc, PrintfFunc, SprintFunc", "lines": "388-394, 404-410, 434-438" },
+        { "path": "doc.go", "lines": "51-56" }
+      ],
+      "reference_answer": "Yes - methods such as PrintFunc(), PrintfFunc(), and SprintFunc() return a reusable closure bound to that Color's settings, e.g. `red := color.New(color.FgRed).PrintfFunc(); red(\"error: %s\", err)`, as shown directly in doc.go's usage example.",
+      "rationale": "Read the *Func() method family in color.go and the matching usage example in doc.go."
+    }
+  ]
+}

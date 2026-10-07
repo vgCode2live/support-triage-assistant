@@ -1,0 +1,106 @@
+{
+  "repo": {
+    "owner": "python-humanize",
+    "name": "humanize",
+    "url": "https://github.com/python-humanize/humanize",
+    "commit_sha_or_ref": "785e5dcc0d0308ad0dff3f6cc0faa7085ad0375b",
+    "primary_language": "Python",
+    "approx_loc": 1725,
+    "selection_rationale": "A focused, well-documented library (number, time, filesize, list formatting) with extensive docstrings carrying runnable examples, a real localization system, and a public issue tracker with concrete, still-checkable bug reports."
+  },
+  "fixtures": [
+    {
+      "id": "humanize-001",
+      "question": "What does `humanize.naturalsize(3000000)` return by default?",
+      "question_type": "code_behavior",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "src/humanize/filesize.py", "symbol": "naturalsize", "lines": "38-65" }],
+      "reference_answer": "'3.0 MB' - decimal (base-1000) suffixes are used by default, since both binary and gnu default to False.",
+      "rationale": "Read naturalsize's docstring, which includes this exact call and its output as a doctest example."
+    },
+    {
+      "id": "humanize-002",
+      "question": "How does `naturalsize` behave differently when called with `binary=True` versus `gnu=True`?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "src/humanize/filesize.py", "symbol": "naturalsize", "lines": "82-90, 108" }],
+      "reference_answer": "Both use base 1024 instead of 1000. binary=True uses suffixes like KiB/MiB with a space before the suffix (e.g. '2.9 KiB'). gnu=True ignores the binary argument entirely and uses single-letter GNU ls-style suffixes (K, M) with no space (e.g. '2.9K').",
+      "rationale": "Read the suffix-selection and base-selection logic, and the `space` variable that differs between the gnu and non-gnu branches."
+    },
+    {
+      "id": "humanize-003",
+      "question": "Can `naturalsize`'s output ever display something like '1000.0 kB' instead of stepping up to the next unit?",
+      "question_type": "code_behavior",
+      "difficulty": "hard",
+      "expected_source": [{ "path": "src/humanize/filesize.py", "symbol": "naturalsize", "lines": "99-107" }],
+      "reference_answer": "No. The function explicitly checks whether formatting the rounded mantissa at the chosen suffix would reach or exceed `base`, and if so increments the exponent by one, specifically to avoid printing '1000.0 kB' and instead print '1.0 MB'.",
+      "rationale": "Read the comment and conditional directly addressing this rounding edge case, which exists precisely to prevent this output."
+    },
+    {
+      "id": "humanize-004",
+      "question": "What does `humanize.lists.natural_list([\"one\", \"two\", \"three\"])` return?",
+      "question_type": "code_behavior",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "src/humanize/lists.py", "symbol": "natural_list", "lines": "13-40" }],
+      "reference_answer": "'one, two and three' - items are comma-joined except the last pair, which is joined with ' and '.",
+      "rationale": "Read natural_list's docstring example and implementation directly."
+    },
+    {
+      "id": "humanize-005",
+      "question": "Does this library only format static numbers (like adding commas), or can it also turn things like 'this happened 3 minutes ago' into readable text?",
+      "question_type": "existing_feature_check",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "src/humanize/time.py", "symbol": "naturaldelta, naturaltime", "lines": "23-29, 97-136" }],
+      "reference_answer": "It does both. src/humanize/time.py provides naturaldelta/naturaltime, which convert a datetime or timedelta into fuzzy, human-readable durations like '30 minutes' or similar, in addition to the number-formatting functions in number.py.",
+      "rationale": "Read the module's __all__ exports and naturaldelta's docstring/example showing a timedelta converted to '30 minutes'."
+    },
+    {
+      "id": "humanize-006",
+      "question": "Is there a way to format a number but show a '<' or '>' marker if it falls outside an expected range, instead of just showing the raw value?",
+      "question_type": "existing_feature_check",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "src/humanize/number.py", "symbol": "clamp", "lines": "460-534" }],
+      "reference_answer": "Yes - humanize.number.clamp(value, floor=..., ceil=...) returns the floor or ceil value formatted and prepended with floor_token/ceil_token (default '<' and '>') when the input value falls outside that range.",
+      "rationale": "Read clamp's full implementation and docstring examples, e.g. clamp(0.0001, floor=0.01) -> '<0.01'."
+    },
+    {
+      "id": "humanize-007",
+      "question": "Does this library support producing output in languages other than English, such as French or German?",
+      "question_type": "existing_feature_check",
+      "difficulty": "medium",
+      "expected_source": [
+        { "path": "README.md", "lines": "13-45" },
+        { "path": "src/humanize/i18n.py", "symbol": "activate, _THOUSANDS_SEPARATOR, _DECIMAL_SEPARATOR", "lines": "15-37, 55-60" }
+      ],
+      "reference_answer": "Yes. The README lists dozens of supported locales including French and German, and i18n.py implements this via an activate(locale) function plus per-locale thousands/decimal separator mappings used by the number-formatting functions.",
+      "rationale": "Read the README's locale list and the i18n module's activate() function and separator mapping dictionaries."
+    },
+    {
+      "id": "humanize-008",
+      "question": "How does a user switch the library's output into a specific locale, such as German?",
+      "question_type": "config_or_setup",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "src/humanize/i18n.py", "symbol": "activate", "lines": "55-60" }],
+      "reference_answer": "Call humanize.i18n.activate(locale) with a locale code such as 'de_DE' before using the formatting functions. A corresponding deactivate() exists to revert to the default (no-op) translation.",
+      "rationale": "Read the activate() function signature and __all__ list, which exports activate/deactivate as the public entry points."
+    },
+    {
+      "id": "humanize-009",
+      "question": "What happens if you call `humanize.number.clamp(None)`?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "src/humanize/number.py", "symbol": "clamp", "lines": "509-510" }],
+      "reference_answer": "It returns None directly - the function checks `if value is None: return None` before any formatting or range logic runs.",
+      "rationale": "Read the first check inside clamp(), and its own docstring example `clamp(None) is None` -> True."
+    },
+    {
+      "id": "humanize-010",
+      "question": "GitHub issue python-humanize/humanize#108 reports that `naturaldelta(value, months=True)` doesn't show a month breakdown for multi-year durations - e.g. it expected '4 years, 7 months' but got only '4 years'. Looking at the current code, does naturaldelta still behave this way for durations where years > 1?",
+      "question_type": "bug_status",
+      "difficulty": "hard",
+      "expected_source": [{ "path": "src/humanize/time.py", "symbol": "naturaldelta", "lines": "237-259" }],
+      "reference_answer": "Yes, this still appears to be the current behavior. For years == 1, naturaldelta does return a month breakdown when months=True (e.g. '1 year, 7 months'). But for years > 1, execution falls through to the final return statement, which computes years = round(delta.days / 365) and returns only '%d years' via intcomma - that branch never references num_months or the months parameter at all, so multi-year durations don't get a month breakdown even though one-year durations do.",
+      "rationale": "Read issue #108's reproduction steps, then traced naturaldelta's years==1 branch (which does use num_months) against its final years>1 fallback branch (which does not), in the current source."
+    }
+  ]
+}

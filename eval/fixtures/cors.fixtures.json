@@ -1,0 +1,112 @@
+{
+  "repo": {
+    "owner": "expressjs",
+    "name": "cors",
+    "url": "https://github.com/expressjs/cors",
+    "commit_sha_or_ref": "5317ebe670db2aaebc1d496eb5d33493deefb3ed",
+    "primary_language": "JavaScript",
+    "approx_loc": 238,
+    "selection_rationale": "A small, real, widely-used Express/Connect middleware with a focused single-file implementation, a thorough README describing every config option and common misconceptions, and a real regression test tied to a numbered GitHub issue. Below the 500 LOC target in the brief, but it is a genuinely complete, documented project, not a toy."
+  },
+  "fixtures": [
+    {
+      "id": "cors-001",
+      "question": "When the `origin` option is left at its default ('*'), what CORS header does the middleware add to the response?",
+      "question_type": "code_behavior",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "lib/index.js", "symbol": "configureOrigin", "lines": "41-46" }],
+      "reference_answer": "Only `Access-Control-Allow-Origin: *` is added. No `Vary: Origin` header is added in this branch, unlike the fixed-origin and reflected-origin branches.",
+      "rationale": "Read the configureOrigin function's first branch, which handles the default/'*' origin case."
+    },
+    {
+      "id": "cors-002",
+      "question": "If `origin` is configured as an array mixing strings and regular expressions, how does the middleware decide whether a given request origin is allowed?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "lib/index.js", "symbol": "isOriginAllowed", "lines": "19-34" }],
+      "reference_answer": "isOriginAllowed recurses over the array: for a string entry it checks exact equality with the request origin, for a RegExp entry it calls allowedOrigin.test(origin), and it returns true as soon as any entry matches.",
+      "rationale": "Read the isOriginAllowed function, which handles Array, string, and RegExp cases explicitly."
+    },
+    {
+      "id": "cors-003",
+      "question": "Does setting `credentials: true` by itself cause the middleware to also set `Access-Control-Allow-Origin: *`?",
+      "question_type": "code_behavior",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "lib/index.js", "symbol": "configureCredentials, cors", "lines": "84-92, 159-189" }],
+      "reference_answer": "No. configureCredentials only ever emits the Access-Control-Allow-Credentials header. The Access-Control-Allow-Origin header is produced independently by configureOrigin, which is controlled entirely by the separate `origin` option.",
+      "rationale": "Read configureCredentials (only touches Allow-Credentials) and the cors() function, which calls configureOrigin and configureCredentials as separate, independent header-producing steps."
+    },
+    {
+      "id": "cors-004",
+      "question": "What does the `optionsSuccessStatus` option control, and why might someone change it from the default?",
+      "question_type": "config_or_setup",
+      "difficulty": "easy",
+      "expected_source": [
+        { "path": "README.md", "lines": "235" },
+        { "path": "lib/index.js", "symbol": "cors", "lines": "173-181" }
+      ],
+      "reference_answer": "It sets the HTTP status code used for successful OPTIONS preflight responses, defaulting to 204. The README notes it exists because some legacy browsers (IE11, various smart TVs) choke on a 204 response, so apps targeting those can set it to 200 instead.",
+      "rationale": "Read the README's Configuration Options entry for optionsSuccessStatus and the code path in cors() that uses it to set res.statusCode."
+    },
+    {
+      "id": "cors-005",
+      "question": "If I pass a function as the `origin` option, what arguments does my function receive, and what should it do with its callback?",
+      "question_type": "config_or_setup",
+      "difficulty": "medium",
+      "expected_source": [
+        { "path": "README.md", "lines": "98-136" },
+        { "path": "lib/index.js", "symbol": "middlewareWrapper", "lines": "209-226" }
+      ],
+      "reference_answer": "The function is called with (requestOrigin, callback). It must call callback(err, origin), where origin is a non-function value (string, boolean, RegExp, or array) to use as the resolved origin option for that request - this is intended for loading allowed origins dynamically, e.g. from a database.",
+      "rationale": "Read the README's 'Configuring CORS w/ Dynamic Origin' section and the originCallback handling inside middlewareWrapper."
+    },
+    {
+      "id": "cors-006",
+      "question": "Does this middleware support enabling CORS on just one specific route, instead of the whole app?",
+      "question_type": "existing_feature_check",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "README.md", "lines": "57-72" }],
+      "reference_answer": "Yes. The README's 'Enable CORS for a Single Route' section shows passing cors() as route-level middleware, e.g. app.get('/products/:id', cors(), handler), instead of app.use(cors()) at the application level.",
+      "rationale": "Read the README section that explicitly demonstrates single-route usage."
+    },
+    {
+      "id": "cors-007",
+      "question": "Can the CORS configuration be computed differently per incoming request, for example different rules for different URL paths?",
+      "question_type": "existing_feature_check",
+      "difficulty": "medium",
+      "expected_source": [
+        { "path": "README.md", "lines": "172-217" },
+        { "path": "lib/index.js", "symbol": "middlewareWrapper", "lines": "192-202" }
+      ],
+      "reference_answer": "Yes. Passing a function instead of a static options object to cors() causes middlewareWrapper to call that function per request as optionsCallback(req, callback), and the function must call callback(error, corsOptions) with whatever options apply to that specific request.",
+      "rationale": "Read the README's 'Customizing CORS Settings Dynamically per Request' example and the middlewareWrapper code that detects a function argument and wraps it as optionsCallback."
+    },
+    {
+      "id": "cors-008",
+      "question": "A user reports that an OPTIONS preflight for a POST route configured with origin: true and credentials: true doesn't return the right Access-Control-Allow-Origin header. Is this a known, already-covered scenario in this codebase?",
+      "question_type": "possible_duplicate",
+      "difficulty": "medium",
+      "expected_source": [{ "path": "test/issue-2.js" }],
+      "reference_answer": "Yes. test/issue-2.js is a regression test for exactly this scenario (origin: true, methods: ['POST'], credentials: true on an /api/login route). It asserts the OPTIONS preflight returns 204 with Access-Control-Allow-Origin reflecting the request's Origin header, and that the subsequent POST also returns the header correctly - so this looks like a duplicate of an already-handled issue, not a new bug.",
+      "rationale": "Read test/issue-2.js, a real regression test named after and tied to a specific past GitHub issue in this repo."
+    },
+    {
+      "id": "cors-009",
+      "question": "According to the README, does setting `origin` to a specific domain prevent the server from receiving requests from other domains?",
+      "question_type": "documentation_lookup",
+      "difficulty": "easy",
+      "expected_source": [{ "path": "README.md", "lines": "258-260" }],
+      "reference_answer": "No. The README explicitly lists this as a misconception: the server still responds to requests from any origin; the `origin` setting only controls whether a browser will let its own JavaScript read the response.",
+      "rationale": "Read the 'Common Misconceptions' section of the README, which directly addresses this exact claim."
+    },
+    {
+      "id": "cors-010",
+      "question": "If no `allowedHeaders` option is set, how does the middleware decide which headers to allow in a preflight response, and does that choice add any other response header as a side effect?",
+      "question_type": "code_behavior",
+      "difficulty": "hard",
+      "expected_source": [{ "path": "lib/index.js", "symbol": "configureAllowedHeaders", "lines": "94-115" }],
+      "reference_answer": "It reflects back whatever the browser itself requested, via the incoming Access-Control-Request-Headers request header. Because the allowed set now depends on that request header, the function also pushes a Vary: Access-Control-Request-Headers response header in that branch.",
+      "rationale": "Read configureAllowedHeaders, specifically the branch taken when options.allowedHeaders/options.headers is not set."
+    }
+  ]
+}
